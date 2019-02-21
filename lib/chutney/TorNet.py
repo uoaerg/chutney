@@ -2,6 +2,7 @@
 #
 # Copyright 2011 Nick Mathewson, Michael Stone
 # Copyright 2013 The Tor Project
+# Copyright 2019 Tom Jones <tj@enoti.me>
 #
 #  You may do anything with this work that copyright law would normally
 #  restrict, so long as you retain the above notice(s) and this license
@@ -12,6 +13,7 @@ from __future__ import with_statement
 
 import cgitb
 import os
+import pwd
 import signal
 import subprocess
 import sys
@@ -20,7 +22,9 @@ import errno
 import time
 import shutil
 import importlib
+import ipaddress
 
+from chutney.NetworkConfig import *
 from chutney.Debug import debug_flag, debug
 
 import chutney.Templating
@@ -133,7 +137,7 @@ def run_tor(cmdline):
             raise
     return stdouterr
 
-def launch_process(cmdline, tor_name="tor", stdin=None):
+def launch_process(cmdline, tor_name="tor", stdin=None, netns=None):
     """Launch the command line cmdline, which must start with the path or
        name of a binary. Use tor_name as the canonical name of the binary.
        Pass stdin to the Popen constructor.
@@ -145,12 +149,21 @@ def launch_process(cmdline, tor_name="tor", stdin=None):
     elif tor_name == "tor-gencert" and debug_flag:
         cmdline.append("-v")
     try:
-        p = subprocess.Popen(cmdline,
-                             stdin=stdin,
-                             stdout=subprocess.PIPE,
-                             stderr=subprocess.STDOUT,
-                             universal_newlines=True,
-                             bufsize=-1)
+        if netns:
+            p = pyroute2.NSPopen(netns, cmdline,
+                                 stdin=stdin,
+                                 stdout=subprocess.PIPE,
+                                 stderr=subprocess.STDOUT,
+                                 universal_newlines=True,
+                                 bufsize=-1,
+                                 preexec_fn=drop_privilege())
+        else:
+            p = subprocess.Popen(cmdline,
+                                 stdin=stdin,
+                                 stdout=subprocess.PIPE,
+                                 stderr=subprocess.STDOUT,
+                                 universal_newlines=True,
+                                 bufsize=-1)
     except OSError as e:
         # only catch file not found error
         if e.errno == errno.ENOENT:
@@ -159,6 +172,13 @@ def launch_process(cmdline, tor_name="tor", stdin=None):
         else:
             raise
     return p
+
+def drop_privilege(user="tom"):
+    if os.geteuid() == 0:
+        print("[DEBUG] TODO: running as root, you should figure out how to drop and still run tests" )
+        #pw_record = pwd.getpwnam(user)
+        #os.setgid(pw_record.pw_uid)
+        #os.setuid(pw_record.pw_gid)
 
 def run_tor_gencert(cmdline, passphrase):
     """Run the tor-gencert command line cmdline, which must start with the
@@ -589,7 +609,7 @@ class LocalNodeBuilder(NodeBuilder):
             # It's ok to give an authority's IPv6 address to an IPv4-only
             # client or relay: it will and must ignore it
             if self._env['ipv6_addr'] is not None:
-                authlines += " ipv6=%s:%s" % (self._env['ipv6_addr'],
+                authlines += " ipv6=[%s]:%s" % (self._env['ipv6_addr'],
                                               self._env['orport'])
             authlines += " %s %s:%s %s\n" % (
                 self._env['dirserver_flags'], self._env['ip'],
@@ -705,7 +725,15 @@ class LocalNodeController(NodeController):
             tor_path,
             "-f", torrc,
             ]
-        p = launch_process(cmdline)
+
+        namespace = create_chtny_namespace(
+            self._env['nick'],
+            'chtnybridge',
+            self._env['ipv4_addr'],
+            self._env['ipv6_addr'],
+            self._env['network_profile'])
+
+        p = launch_process(cmdline, netns=namespace)
         if self.waitOnLaunch():
             # this requires that RunAsDaemon is set
             (stdouterr, empty_stderr) = p.communicate()
@@ -789,6 +817,7 @@ class LocalNodeController(NodeController):
 
 # XXX: document these options
 DEFAULTS = {
+    'cmdline': sys.argv,
     'authority': False,
     'bridgeauthority': False,
     'hasbridgeauth': False,
@@ -804,10 +833,18 @@ DEFAULTS = {
     'auth_cert_lifetime': 12,
     'ip': os.environ.get('CHUTNEY_LISTEN_ADDRESS', '127.0.0.1'),
     # we default to ipv6_addr None to support IPv4-only systems
+    'ipv4_addr': os.environ.get('CHUTNEY_LISTEN_ADDRESS', '127.0.0.1'),
     'ipv6_addr': os.environ.get('CHUTNEY_LISTEN_ADDRESS_V6', None),
     'dirserver_flags': 'no-v2',
     'chutney_dir': get_absolute_chutney_path(),
     'torrc_fname': '${dir}/torrc',
+    'network_profile': {
+        "uplink":{"drop_rate":0, "bandwidth":10000, "delay":9},
+        "downlink":{"drop_rate":0, "bandwidth":10000, "delay":9}
+    },
+    # use site local addresses for nodes, reserve 10.0.0.1 and fc00::1 for testing
+    'v4addr_base': '10.0.0.2',
+    'v6addr_base': 'fc00::2',
     'orport_base': 5000,
     'dirport_base': 7000,
     'controlport_base': 8000,
@@ -874,6 +911,9 @@ class TorEnviron(chutney.Templating.Environ):
           orport_base, controlport_base, socksport_base, dirport_base: the
              initial port numbers used by nodenum 0. Each additional node adds
              1 to the port numbers.
+          ipv6_addr:
+             IPv6 node address. Starts at the bottom of an ipv6 range, adds
+             nodenum to base to get address
           tor-gencert (note hyphen): name or path of the tor-gencert binary (if
              present)
           chutney_dir: directory of the chutney source code
@@ -902,6 +942,15 @@ class TorEnviron(chutney.Templating.Environ):
 
     def _get_dirport(self, my):
         return my['dirport_base'] + my['nodenum']
+
+    def _get_ip(self, my):
+        return str(ipaddress.ip_address(my['v4addr_base']) + my['nodenum'])
+
+    def _get_ipv4_addr(self, my):
+        return str(ipaddress.ip_address(my['v4addr_base']) + my['nodenum'])
+
+    def _get_ipv6_addr(self, my):
+        return str(ipaddress.ip_address(my['v6addr_base']) + my['nodenum'])
 
     def _get_dir(self, my):
         return os.path.abspath(os.path.join(my['net_base_dir'],
@@ -1106,6 +1155,14 @@ class Network(object):
         # format polling correctly - avoid printing a newline
         sys.stdout.write("Starting nodes")
         sys.stdout.flush()
+
+        # tidy up before creating anything
+        print("tidying up old chutney links and namespaces")
+        remove_chtny_namespaces()
+
+        # create a central bridge
+        create_bridge()
+
         rv = all([n.getController().start() for n in self._nodes])
         # now print a newline unconditionally - this stops poll()ing
         # output from being squashed together, at the cost of a blank
@@ -1191,9 +1248,10 @@ def runConfigFile(verb, data):
                     Node=Node,
                     ConfigureNodes=ConfigureNodes,
                     _THE_NETWORK=_THE_NETWORK)
-
     exec(data, _GLOBALS)
     network = _GLOBALS['_THE_NETWORK']
+
+    print("verb: {} available tests: \n\t{}".format(verb, getTests()))
 
     # let's check if the verb is a valid test and run it
     if verb in getTests():
@@ -1218,7 +1276,7 @@ def parseArgs():
         exit_on_error("Not enough arguments given.")
     if not os.path.isfile(sys.argv[2]):
         exit_on_error("Cannot find networkfile: {0}.".format(sys.argv[2]))
-    return {'network_cfg': sys.argv[2], 'action': sys.argv[1]}
+    return {'network_cfg': sys.argv[2], 'action': sys.argv[1], 'cmdline': sys.argv[3:]}
 
 
 def main():
