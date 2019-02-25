@@ -68,11 +68,21 @@ def create_epair(ip, namespace):
     return outside, inside
 
 def set_qdisc(ip, interface, network_profile):
-    index = ip.link_lookup(ifname=interface)[0]
-    ip.tc('add', 'netem', index,
-        delay=network_profile['delay']*1000,    # convert to micro seconds
-        rate=network_profile['bandwidth'],      # TODO unused by pyroute2
-        loss=network_profile['drop_rate']       # percentage
+    # We should be able to set up a netem qdisc with pyroute2, but pyroute2 is
+    # unable to set network rates.
+    #index = ip.link_lookup(ifname=interface)[0]
+    #ip.tc('add', 'netem', index,
+    #    delay=network_profile['delay']*1000,    # convert to micro seconds
+    #    rate=network_profile['bandwidth'],      # TODO unused by pyroute2
+    #    loss=network_profile['drop_rate']       # percentage
+    #)
+    # Instead shell out with a command of the form:
+    #     tc qdisc add dev outside root netem delay 200ms rate 1024kbit
+
+    command = "tc qdisc add dev outside root netem delay {}ms rate {}kbit loss {}%".format(
+        delay=network_profile['delay']*1000,
+        rate=network_profile['bandwidth'],
+        loss=network_profile['drop_rate']
     )
 
 def create_chtny_namespace(namespace, bridge, ip4addr, ip6addr, network_profile):
