@@ -23,6 +23,7 @@ import time
 import shutil
 import importlib
 import ipaddress
+import pyroute2
 
 from chutney.NetworkConfig import *
 from chutney.Debug import debug_flag, debug
@@ -838,9 +839,10 @@ DEFAULTS = {
     'dirserver_flags': 'no-v2',
     'chutney_dir': get_absolute_chutney_path(),
     'torrc_fname': '${dir}/torrc',
+    # default base network profile, gigabit link, 1ms delay, no loss
     'network_profile': {
-        "uplink":{"drop_rate":0, "bandwidth":10000, "delay":9},
-        "downlink":{"drop_rate":0, "bandwidth":10000, "delay":9}
+        "uplink":{"drop_rate":0, "bandwidth":1000000, "delay":1},
+        "downlink":{"drop_rate":0, "bandwidth":1000000, "delay":1}
     },
     # use site local addresses for nodes, reserve 10.0.0.1 and fc00::1 for testing
     'v4addr_base': '10.0.0.2',
