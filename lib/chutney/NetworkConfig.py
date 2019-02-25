@@ -78,12 +78,14 @@ def set_qdisc(ip, interface, network_profile):
     #)
     # Instead shell out with a command of the form:
     #     tc qdisc add dev outside root netem delay 200ms rate 1024kbit
-
-    command = "tc qdisc add dev outside root netem delay {}ms rate {}kbit loss {}%".format(
-        delay=network_profile['delay']*1000,
-        rate=network_profile['bandwidth'],
-        loss=network_profile['drop_rate']
+    cmdline = "tc qdisc add dev {} root netem delay {}ms rate {}kbit loss {}%".format(
+        interface,
+        network_profile['delay'],
+        network_profile['bandwidth'],
+        network_profile['drop_rate']
     )
+    p = subprocess.Popen(cmdline, shell=True)
+    p.wait()
 
 def create_chtny_namespace(namespace, bridge, ip4addr, ip6addr, network_profile):
     ip = IPRoute()
