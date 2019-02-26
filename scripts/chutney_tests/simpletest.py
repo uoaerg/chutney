@@ -80,13 +80,14 @@ def echo_client(pipe, namespace, socksport, address, port):
             print("connect_via_socks5 failed")
             pipe.send(False)
             return
+
         senddata = "hello  world tst"
 
         for x in range(10):
             try:
                 sendsock.send(senddata)
             except socket.error as e:
-                print("error sending data {}".format(e)
+                print("error sending data {}".format(e))
                 pipe.send(False)
                 return
 
@@ -135,7 +136,7 @@ def connect_via_socks5(s, socksport, addr, port):
     try:
         data = s.recv(2)
     except socket.error as e:
-        print("error sending SOCKS auth command {}".format(e)
+        print("error sending SOCKS auth command {}".format(e))
         return False
 
     if not socks5_parse_auth(data):
@@ -145,7 +146,7 @@ def connect_via_socks5(s, socksport, addr, port):
     try:
         s.send(socks5_connect_cmd(addr, port))
     except socket.error as e:
-        print("error sending SOCKS connect command {}".format(e)
+        print("error sending SOCKS connect command {}".format(e))
         return False
 
     #response field len: version status pad addrtype
