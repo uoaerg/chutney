@@ -26,7 +26,6 @@ def verify_network(client, boot_time=60):
 
     laddr = client._env['ipv4_addr']
     socksport = client._env['socksport']
-    print("control port {}".format(client._env['controlport']))
 
     namespace = '/var/run/netns/chtny' + client._env['nick']
 
