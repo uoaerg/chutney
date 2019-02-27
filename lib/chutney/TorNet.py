@@ -151,6 +151,7 @@ def launch_process(cmdline, tor_name="tor", stdin=None, netns=None):
         cmdline.append("-v")
     try:
         if netns:
+            print("running as {} {}".format(os.getuid(), os.getgid()))
             p = pyroute2.NSPopen(netns, cmdline,
                                  stdin=stdin,
                                  stdout=subprocess.PIPE,
@@ -158,6 +159,7 @@ def launch_process(cmdline, tor_name="tor", stdin=None, netns=None):
                                  universal_newlines=True,
                                  bufsize=-1,
                                  preexec_fn=drop_privilege())
+            print("running as {} {}".format(os.getuid(), os.getgid()))
         else:
             p = subprocess.Popen(cmdline,
                                  stdin=stdin,
@@ -165,6 +167,7 @@ def launch_process(cmdline, tor_name="tor", stdin=None, netns=None):
                                  stderr=subprocess.STDOUT,
                                  universal_newlines=True,
                                  bufsize=-1)
+        print("running as {} {}".format(os.getuid(), os.getgid()))
     except OSError as e:
         # only catch file not found error
         if e.errno == errno.ENOENT:
@@ -174,12 +177,22 @@ def launch_process(cmdline, tor_name="tor", stdin=None, netns=None):
             raise
     return p
 
-def drop_privilege(user="tom"):
+def drop_privilege(user=""):
     if os.geteuid() == 0:
-        print("[DEBUG] TODO: running as root, you should figure out how to drop and still run tests" )
-        #pw_record = pwd.getpwnam(user)
-        #os.setgid(pw_record.pw_uid)
-        #os.setuid(pw_record.pw_gid)
+        print("[DEBUG] running as root with sudo user {}".format(os.environ['SUDO_USER']))
+
+    if not user:
+	user = os.environ['SUDO_USER']
+	if not user:
+            # we should never get here exit
+	    print("not running under sudo, cannot find user for unpriviledged commands")
+	    exit()
+    if os.geteuid() == 0:
+	pw_record = pwd.getpwnam(user)
+	print("[DEBUG] TODO: drop privileges on process start")
+	os.setegid(pw_record.pw_uid)
+	os.seteuid(pw_record.pw_gid)
+
 
 def run_tor_gencert(cmdline, passphrase):
     """Run the tor-gencert command line cmdline, which must start with the
