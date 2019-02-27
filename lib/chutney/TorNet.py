@@ -573,6 +573,8 @@ class LocalNodeBuilder(NodeBuilder):
         """Generate an identity key for this router, unless we already have,
            and set up the 'fingerprint' entry in the Environ.
         """
+        print("getRouterKey running as {} {}".format(os.getuid(), os.getgid()))
+        print("getRouterKey running as {} {}".format(os.geteuid(), os.getegid()))
         datadir = self._env['dir']
         tor = self._env['tor']
         torrc = self._getTorrcFname()
