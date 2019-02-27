@@ -153,28 +153,23 @@ def launch_process(cmdline, tor_name="tor", stdin=None, netns=None):
     print(cmdline)
     try:
         if netns:
+            raise_privilege()
             with Namespace('/var/run/netns/' + netns, 'net'):
-                print("running as {} {}".format(os.getuid(), os.getgid()))
                 p = subprocess.Popen(cmdline,
                                      stdin=stdin,
                                      stdout=subprocess.PIPE,
                                      stderr=subprocess.STDOUT,
                                      universal_newlines=True,
-                                     bufsize=-1,
-                                     preexec_fn=drop_privilege())
-                os.setegid(0)
-                os.seteuid(0)
-                print("running as {} {}".format(os.getuid(), os.getgid()))
+                                     bufsize=-1)
+            drop_privilege()
+            print("running as {} {}".format(os.getuid(), os.getgid()))
         else:
             p = subprocess.Popen(cmdline,
                                  stdin=stdin,
                                  stdout=subprocess.PIPE,
                                  stderr=subprocess.STDOUT,
                                  universal_newlines=True,
-                                 bufsize=-1,
-                                 preexec_fn=drop_privilege())
-            os.setegid(0)
-            os.seteuid(0)
+                                 bufsize=-1)
     except OSError as e:
         # only catch file not found error
         if e.errno == errno.ENOENT:
@@ -201,6 +196,10 @@ def drop_privilege(user=""):
 	os.setegid(pw_record.pw_uid)
 	os.seteuid(pw_record.pw_gid)
         print("after drop running as {} {}".format(os.geteuid(), os.getegid()))
+
+def raise_privilege():
+    os.setegid(0)
+    os.seteuid(0)
 
 def run_tor_gencert(cmdline, passphrase):
     """Run the tor-gencert command line cmdline, which must start with the
@@ -1317,6 +1316,7 @@ def main():
     _TORRC_OPTIONS = dict()
     _THE_NETWORK = Network(_BASE_ENVIRON)
 
+    drop_privilege()
     args = parseArgs()
     f = open(args['network_cfg'])
     result = runConfigFile(args['action'], f)
