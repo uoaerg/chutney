@@ -150,6 +150,7 @@ def launch_process(cmdline, tor_name="tor", stdin=None, netns=None):
         cmdline.append("--quiet")
     elif tor_name == "tor-gencert" and debug_flag:
         cmdline.append("-v")
+    print(cmdline)
     try:
         if netns:
             with Namespace('/var/run/netns/' + netns, 'net'):
