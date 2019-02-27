@@ -750,12 +750,14 @@ class LocalNodeController(NodeController):
             "-f", torrc,
             ]
 
+        raise_privilege()
         namespace = create_chtny_namespace(
             self._env['nick'],
             'chtnybridge',
             self._env['ipv4_addr'],
             self._env['ipv6_addr'],
             self._env['network_profile'])
+        drop_privilege()
 
         p = launch_process(cmdline, netns=namespace)
         if self.waitOnLaunch():
@@ -1183,10 +1185,12 @@ class Network(object):
 
         # tidy up before creating anything
         print("tidying up old chutney links and namespaces")
+        raise_privilege()
         remove_chtny_namespaces()
 
         # create a central bridge
         create_bridge()
+        drop_privilege()
 
         rv = all([n.getController().start() for n in self._nodes])
         # now print a newline unconditionally - this stops poll()ing
