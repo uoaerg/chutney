@@ -1313,18 +1313,6 @@ def main():
     global _TOR_VERSIONS
     global _TORRC_OPTIONS
     global _THE_NETWORK
-
-    print("""
-
-           _             _   _
-       ___| |_ __ _ _ __| |_(_)_ __   __ _   _   _ _ __
-      / __| __/ _` | '__| __| | '_ \ / _` | | | | | '_ \
-      \__ \ || (_| | |  | |_| | | | | (_| | | |_| | |_) |
-      |___/\__\__,_|_|   \__|_|_| |_|\__, |  \__,_| .__/
-                                     |___/        |_|
-
-    """)
-
     _BASE_ENVIRON = TorEnviron(chutney.Templating.Environ(**DEFAULTS))
     # _TOR_VERSIONS gets initialised on demand as a map of
     # "/path/to/tor" => "Tor version ..."
