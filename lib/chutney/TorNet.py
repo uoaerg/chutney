@@ -119,7 +119,7 @@ def run_tor(cmdline):
     #    cmdline.append("--quiet")
     try:
         stdouterr = subprocess.check_output(cmdline,
-                                            stderr=subprocess.STDOUT,
+    #                                        stderr=subprocess.STDOUT,
                                             universal_newlines=True,
                                             bufsize=-1)
         debug(stdouterr)
