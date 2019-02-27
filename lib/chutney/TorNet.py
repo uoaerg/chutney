@@ -153,16 +153,19 @@ def launch_process(cmdline, tor_name="tor", stdin=None, netns=None):
     print(cmdline)
     try:
         if netns:
+            print("outside running as {} {}".format(os.getuid(), os.getgid()))
             raise_privilege()
             with Namespace('/var/run/netns/' + netns, 'net'):
+                print("inside running as {} {}".format(os.getuid(), os.getgid()))
                 p = subprocess.Popen(cmdline,
                                      stdin=stdin,
                                      stdout=subprocess.PIPE,
                                      stderr=subprocess.STDOUT,
                                      universal_newlines=True,
                                      bufsize=-1)
+            print("after running as {} {}".format(os.getuid(), os.getgid()))
             drop_privilege()
-            print("running as {} {}".format(os.getuid(), os.getgid()))
+            print("dropped running as {} {}".format(os.getuid(), os.getgid()))
         else:
             p = subprocess.Popen(cmdline,
                                  stdin=stdin,
