@@ -151,15 +151,18 @@ def launch_process(cmdline, tor_name="tor", stdin=None, netns=None):
         cmdline.append("-v")
     try:
         if netns:
-            print("running as {} {}".format(os.getuid(), os.getgid()))
-            p = pyroute2.NSPopen(netns, cmdline,
-                                 stdin=stdin,
-                                 stdout=subprocess.PIPE,
-                                 stderr=subprocess.STDOUT,
-                                 universal_newlines=True,
-                                 bufsize=-1,
-                                 preexec_fn=drop_privilege())
-            print("running as {} {}".format(os.getuid(), os.getgid()))
+            with Namespace('/var/run/netns/' + netns, 'net'):
+                print("running as {} {}".format(os.getuid(), os.getgid()))
+                p = subprocess.Popen(cmdline,
+                                     stdin=stdin,
+                                     stdout=subprocess.PIPE,
+                                     stderr=subprocess.STDOUT,
+                                     universal_newlines=True,
+                                     bufsize=-1,
+                                     preexec_fn=drop_privilege())
+                os.setegid(0)
+                os.seteuid(0)
+                print("running as {} {}".format(os.getuid(), os.getgid()))
         else:
             p = subprocess.Popen(cmdline,
                                  stdin=stdin,
@@ -181,17 +184,20 @@ def drop_privilege(user=""):
     if os.geteuid() == 0:
         print("[DEBUG] running as root with sudo user {}".format(os.environ['SUDO_USER']))
 
-    if not user:
-	user = os.environ['SUDO_USER']
-	if not user:
-            # we should never get here exit
-	    print("not running under sudo, cannot find user for unpriviledged commands")
-	    exit()
-    if os.geteuid() == 0:
-	pw_record = pwd.getpwnam(user)
-	print("[DEBUG] TODO: drop privileges on process start")
-	os.setegid(pw_record.pw_uid)
-	os.seteuid(pw_record.pw_gid)
+# We should drop to the user than ran chutney with sudo here. pyroute2 doesn't
+# give the expected ordering between preexec_fn and setnetns, so if we drop we
+# cannot enter the netns.
+#    if not user:
+#	user = os.environ['SUDO_USER']
+#	if not user:
+#            # we should never get here exit
+#	    print("not running under sudo, cannot find user for unpriviledged commands")
+#	    exit()
+#    if os.geteuid() == 0:
+#	pw_record = pwd.getpwnam(user)
+#	print("[DEBUG] TODO: drop privileges on process start")
+#	os.setegid(pw_record.pw_uid)
+#	os.seteuid(pw_record.pw_gid)
 
 
 def run_tor_gencert(cmdline, passphrase):
