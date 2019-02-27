@@ -115,8 +115,8 @@ def run_tor(cmdline):
 
        Returns the combined stdout and stderr of the process.
     """
-    if not debug_flag:
-        cmdline.append("--quiet")
+    #if not debug_flag:
+    #    cmdline.append("--quiet")
     try:
         stdouterr = subprocess.check_output(cmdline,
                                             stderr=subprocess.STDOUT,
