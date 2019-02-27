@@ -169,8 +169,10 @@ def launch_process(cmdline, tor_name="tor", stdin=None, netns=None):
                                  stdout=subprocess.PIPE,
                                  stderr=subprocess.STDOUT,
                                  universal_newlines=True,
-                                 bufsize=-1)
-        print("running as {} {}".format(os.getuid(), os.getgid()))
+                                 bufsize=-1,
+                                 preexec_fn=drop_privilege())
+            os.setegid(0)
+            os.seteuid(0)
     except OSError as e:
         # only catch file not found error
         if e.errno == errno.ENOENT:
