@@ -24,6 +24,7 @@ import shutil
 import importlib
 import ipaddress
 import pyroute2
+from nsenter import Namespace
 
 from chutney.NetworkConfig import *
 from chutney.Debug import debug_flag, debug
