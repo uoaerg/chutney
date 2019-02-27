@@ -1313,6 +1313,8 @@ def main():
     global _TOR_VERSIONS
     global _TORRC_OPTIONS
     global _THE_NETWORK
+
+    drop_privilege()
     _BASE_ENVIRON = TorEnviron(chutney.Templating.Environ(**DEFAULTS))
     # _TOR_VERSIONS gets initialised on demand as a map of
     # "/path/to/tor" => "Tor version ..."
@@ -1322,8 +1324,6 @@ def main():
     # Or it can be pre-populated as a static whitelist of options
     _TORRC_OPTIONS = dict()
     _THE_NETWORK = Network(_BASE_ENVIRON)
-
-    drop_privilege()
     args = parseArgs()
     f = open(args['network_cfg'])
     result = runConfigFile(args['action'], f)
