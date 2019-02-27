@@ -189,17 +189,18 @@ def drop_privilege(user=""):
         print("[DEBUG] running as root with sudo user {}".format(os.environ['SUDO_USER']))
 
     if not user:
-	user = os.environ['SUDO_USER']
+        if 'SUDO_USER' in os.environ:
+	    user = os.environ['SUDO_USER']
 	if not user:
             # we should never get here exit
 	    print("not running under sudo, cannot find user for unpriviledged commands")
 	    exit()
     if os.geteuid() == 0:
+        print("before drop running as {} {}".format(os.geteuid(), os.getegid()))
 	pw_record = pwd.getpwnam(user)
-	print("[DEBUG] TODO: drop privileges on process start")
 	os.setegid(pw_record.pw_uid)
 	os.seteuid(pw_record.pw_gid)
-
+        print("after drop running as {} {}".format(os.geteuid(), os.getegid()))
 
 def run_tor_gencert(cmdline, passphrase):
     """Run the tor-gencert command line cmdline, which must start with the
