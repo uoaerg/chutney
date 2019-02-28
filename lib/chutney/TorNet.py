@@ -199,9 +199,9 @@ def drop_privilege_subprocess(user=""):
     if os.getuid() == 0:
         print('running as uid 0')
 	pw_record = pwd.getpwnam(user)
-        print('changing uid to {}'.format(pw_record.uid))
+        print('changing uid to {}'.format(pw_record.pw_uid))
 	os.setgid(pw_record.pw_uid)
-        print('changing gid to {}'.format(pw_record.gid))
+        print('changing gid to {}'.format(pw_record.pw_gid))
 	os.setuid(pw_record.pw_gid)
         print('done changing')
 
