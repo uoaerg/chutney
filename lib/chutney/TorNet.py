@@ -185,7 +185,7 @@ def launch_process(cmdline, tor_name="tor", stdin=None, netns=None):
     return p
 
 def drop_privilege_subprocess(user=""):
-    print("[DEBUG] drop_privilege")
+    print("[DEBUG] drop_privilege_subprocess")
     if os.geteuid() == 0:
         print("[DEBUG] running as root with sudo user {}".format(os.environ['SUDO_USER']))
 
@@ -196,10 +196,14 @@ def drop_privilege_subprocess(user=""):
             # we should never get here exit
 	    print("not running under sudo, cannot find user for unpriviledged commands")
 	    exit()
-    if os.geteuid() == 0:
+    if os.getuid() == 0:
+        print('running as uid 0')
 	pw_record = pwd.getpwnam(user)
+        print('changing uid to {}'.format(pw_record.uid))
 	os.setgid(pw_record.pw_uid)
+        print('changing gid to {}'.format(pw_record.gid))
 	os.setuid(pw_record.pw_gid)
+        print('done changing')
 
 def drop_privilege(user=""):
     print("[DEBUG] drop_privilege")
