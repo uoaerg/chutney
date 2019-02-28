@@ -121,7 +121,8 @@ def run_tor(cmdline):
         stdouterr = subprocess.check_output(cmdline,
                                             stderr=subprocess.STDOUT,
                                             universal_newlines=True,
-                                            bufsize=-1)
+                                            bufsize=-1,
+                                            preexec_fn=drop_privilege_subprocess())
         debug(stdouterr)
     except OSError as e:
         # only catch file not found error
@@ -154,7 +155,7 @@ def launch_process(cmdline, tor_name="tor", stdin=None, netns=None):
     try:
         if netns:
             print("outside running as {} {}".format(os.getuid(), os.getgid()))
-            raise_privilege()
+            #raise_privilege()
             with Namespace('/var/run/netns/' + netns, 'net'):
                 print("inside running as {} {}".format(os.getuid(), os.getgid()))
                 p = subprocess.Popen(cmdline,
@@ -162,9 +163,10 @@ def launch_process(cmdline, tor_name="tor", stdin=None, netns=None):
                                      stdout=subprocess.PIPE,
                                      stderr=subprocess.STDOUT,
                                      universal_newlines=True,
-                                     bufsize=-1)
+                                     bufsize=-1,
+                                     preexec_fn=drop_privilege_subprocess())
             print("after running as {} {}".format(os.getuid(), os.getgid()))
-            drop_privilege()
+            #drop_privilege()
             print("dropped running as {} {}".format(os.getuid(), os.getgid()))
         else:
             p = subprocess.Popen(cmdline,
@@ -181,6 +183,23 @@ def launch_process(cmdline, tor_name="tor", stdin=None, netns=None):
         else:
             raise
     return p
+
+def drop_privilege_subprocess(user=""):
+    print("[DEBUG] drop_privilege")
+    if os.geteuid() == 0:
+        print("[DEBUG] running as root with sudo user {}".format(os.environ['SUDO_USER']))
+
+    if not user:
+        if 'SUDO_USER' in os.environ:
+	    user = os.environ['SUDO_USER']
+	if not user:
+            # we should never get here exit
+	    print("not running under sudo, cannot find user for unpriviledged commands")
+	    exit()
+    if os.geteuid() == 0:
+	pw_record = pwd.getpwnam(user)
+	os.setgid(pw_record.pw_uid)
+	os.setuid(pw_record.pw_gid)
 
 def drop_privilege(user=""):
     print("[DEBUG] drop_privilege")
